@@ -1,12 +1,12 @@
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, send_from_directory
 import pandas as pd
 import io
 
 app = Flask(__name__)
 
-# @app.route('/')
-# def index():
-#     return render_template('index.html')
+@app.route('/')
+def serve_index():
+    return send_from_directory('.', 'index.html')
 
 @app.route('/api/aggregate', methods=['POST'])
 def aggregate_csv():
@@ -22,20 +22,21 @@ def aggregate_csv():
             # Shift-JIS (cp932) エンコーディングでファイルを読み込みます
             df = pd.read_csv(io.StringIO(file.stream.read().decode('cp932')))
 
-            # 複数のCSV形式に対応するためのロジック
-            if '数量' in df.columns:
-                df_clean = df[['商品名', '数量']].copy()
-            elif '分量' in df.columns:
-                df_clean = df[['商品名']].copy()
-                df_clean['数量'] = 1
-            elif '商品名' in df.columns:
-                df_clean = df[['商品名']].copy()
-                df_clean['数量'] = 1
-            else:
-                # 必要な列が見つからない場合はこのファイルをスキップ
+            df_clean = pd.DataFrame()
+
+            # 商品名列が存在するかをチェック
+            if '商品名' not in df.columns:
+                print("商品名列が見つかりません。このファイルをスキップします。")
                 continue
 
-            df_clean.columns = ['商品名', '数量']
+            df_clean['商品名'] = df['商品名']
+
+            # 数量列を処理
+            if '数量' in df.columns:
+                df_clean['数量'] = pd.to_numeric(df['数量'], errors='coerce').fillna(1)
+            else:
+                df_clean['数量'] = 1
+
             combined_df_list.append(df_clean)
 
         except Exception as e:
@@ -47,15 +48,13 @@ def aggregate_csv():
 
     combined_df = pd.concat(combined_df_list, ignore_index=True)
 
-    # 変更点：キーワードによる分類をせず、直接「商品名」で集計します
-    aggregated_sales = combined_df.groupby('商品名')['数量'].sum().reset_index()
+    # 商品名でグループ化し、数量の合計を集計します
+    aggregated_sales = combined_df.groupby('商品名').agg(
+        合計数量=('数量', 'sum')
+    ).reset_index()
 
-    # 列名を「合計数量」に統一します
-    aggregated_sales.columns = ['商品名', '合計数量']
-
-    result = aggregated_sales.to_dict('records')
+    # 最終的な結果に含める列を選択
+    final_result = aggregated_sales[['商品名', '合計数量']]
+    result = final_result.to_dict('records')
 
     return jsonify({'result': result})
-
-if __name__ == '__main__':
-    app.run(debug=True)
