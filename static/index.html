@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>集計画面</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            border: 1px solid #ccc;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        #result {
+            margin-top: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>売上集計画面</h1>
+    <p>CSVファイルを選択してアップロードしてください(複数可能)</p>
+    <input type="file" id="csvFile" multiple>
+    <button onclick="uploadFiles()">集計する</button>
+
+    <div id="loading" style="display:none;">集計中...</div>
+    <div id="result"></div>
+</div>
+
+<script>
+async function uploadFiles() {
+    const files = document.getElementById('csvFile').files;
+    if (files.length === 0) {
+        alert('ファイルを選択してください。');
+        return;
+    }
+
+    document.getElementById('loading').style.display = 'block';
+    document.getElementById('result').innerHTML = '';
+
+    const formData = new FormData();
+    for (const file of files) {
+        formData.append('csv_files', file);
+    }
+
+    try {
+        const response = await fetch('/api/aggregate', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        displayResults(data.result);
+    } catch (error) {
+        console.error('Error:', error);
+        alert('集計中にエラーが発生しました。');
+    } finally {
+        document.getElementById('loading').style.display = 'none';
+    }
+}
+
+function displayResults(data) {
+    let tableHtml = '<h2>集計結果</h2>';
+    tableHtml += '<table><thead><tr><th>商品名</th><th>合計数量</th></tr></thead><tbody>';
+    
+    data.forEach(item => {
+        tableHtml += `<tr><td>${item['商品名']}</td><td>${item['合計数量']}</td></tr>`;
+    });
+
+    tableHtml += '</tbody></table>';
+    document.getElementById('result').innerHTML = tableHtml;
+}
+</script>
+
+</body>
+</html>
