@@ -69,14 +69,17 @@ async function uploadFiles() {
         });
 
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            // ステータスコードがエラーの場合、レスポンス内容をログに出力
+            const errorText = await response.text();
+            throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
         }
 
         const data = await response.json();
         displayResults(data.result);
     } catch (error) {
         console.error('Error:', error);
-        alert('集計中にエラーが発生しました。');
+        // ウェブページにもエラーメッセージを表示
+        document.getElementById('result').innerHTML = `<p style="color: red;">集計中にエラーが発生しました。<br>詳細: ${error.message}</p>`;
     } finally {
         document.getElementById('loading').style.display = 'none';
     }
