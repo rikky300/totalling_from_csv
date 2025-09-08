@@ -39,6 +39,7 @@
 <div class="container">
     <h1>売上集計画面</h1>
     <p>CSVファイルを選択してアップロードしてください(複数可能)</p>
+    <p>食べちょく・ベース・ポケットマルシェ</p>
     <input type="file" id="csvFile" multiple>
     <button onclick="uploadFiles()">集計する</button>
 
@@ -63,7 +64,7 @@ async function uploadFiles() {
     }
 
     try {
-        const response = await fetch('/api/aggregate', {
+        const response = await fetch('/api/totalling', {
             method: 'POST',
             body: formData
         });
@@ -87,10 +88,10 @@ async function uploadFiles() {
 
 function displayResults(data) {
     let tableHtml = '<h2>集計結果</h2>';
-    tableHtml += '<table><thead><tr><th>商品名</th><th>合計数量</th></tr></thead><tbody>';
+    tableHtml += '<table><thead><tr><th>品種</th><th>合計分量_kg</th></tr></thead><tbody>';
     
     data.forEach(item => {
-        tableHtml += `<tr><td>${item['商品名']}</td><td>${item['合計数量']}</td></tr>`;
+        tableHtml += `<tr><td>${item['品種']}</td><td>${item['合計分量_kg']}</td></tr>`;
     });
 
     tableHtml += '</tbody></table>';
