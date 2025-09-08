@@ -10,7 +10,6 @@ def serve_index():
     return send_from_directory('.', 'index.html')
 
 @app.route('/api/aggregate', methods=['POST'])
-
 def aggregate_uploaded_files():
     """
     複数のアップロードされたCSVファイルから、品種ごとの合計分量を集計します。
@@ -130,3 +129,37 @@ def aggregate_uploaded_files():
     result = final_agg.to_dict('records')
     
     return jsonify({'result': result})
+
+@app.route('/api/unique', methods=['POST'])
+def unique():
+    """
+    アップロードされた複数のCSVファイルから、各ファイルに含まれる
+    ユニークな商品名とそれぞれのカウント数を返します。
+    """
+    uploaded_files = request.files.getlist('csv_files')
+    results = {}
+
+    for file in uploaded_files:
+        file_name = file.filename
+        
+        try:
+            # エンコーディングを自動判別
+            try:
+                file_content = file.stream.read().decode('utf-8')
+            except UnicodeDecodeError:
+                file.stream.seek(0) # ストリームの位置をリセット
+                file_content = file.stream.read().decode('cp932')
+            
+            df = pd.read_csv(io.StringIO(file_content))
+            
+            if '商品名' in df.columns:
+                # 商品名ごとのカウント数を取得
+                product_counts = df['商品名'].value_counts().to_dict()
+                results[file_name] = product_counts
+            else:
+                results[file_name] = "商品名列が見つかりません"
+        
+        except Exception as e:
+            results[file_name] = f"読み込みエラー: {e}"
+            
+    return jsonify({'result': results})
