@@ -64,7 +64,7 @@ async function uploadFiles() {
     }
 
     try {
-        const response = await fetch('/api/totalling', {
+        const response = await fetch('/api/aggregate', {
             method: 'POST',
             body: formData
         });

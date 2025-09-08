@@ -8,71 +8,71 @@ app = Flask(__name__)
 def serve_index():
     return send_from_directory('.', 'index.html')
 
-@app.route('/api/aggregate', methods=['POST'])
-def aggregate_csv():
-    uploaded_files = request.files.getlist('csv_files')
+# @app.route('/api/aggregate', methods=['POST'])
+# def aggregate_csv():
+#     uploaded_files = request.files.getlist('csv_files')
     
-    if not uploaded_files:
-        return jsonify({'error': 'ファイルがアップロードされていません。'}), 400
+#     if not uploaded_files:
+#         return jsonify({'error': 'ファイルがアップロードされていません。'}), 400
 
-    combined_df_list = []
+#     combined_df_list = []
 
-    for file in uploaded_files:
-        try:
-            # Shift-JIS (cp932) エンコーディングでファイルを読み込みます
-            df = pd.read_csv(io.StringIO(file.stream.read().decode('cp932')))
+#     for file in uploaded_files:
+#         try:
+#             # Shift-JIS (cp932) エンコーディングでファイルを読み込みます
+#             df = pd.read_csv(io.StringIO(file.stream.read().decode('cp932')))
 
-            df_clean = pd.DataFrame()
+#             df_clean = pd.DataFrame()
 
-            # 商品名列が存在するかをチェック
-            if '商品名' not in df.columns:
-                print("商品名列が見つかりません。このファイルをスキップします。")
-                continue
+#             # 商品名列が存在するかをチェック
+#             if '商品名' not in df.columns:
+#                 print("商品名列が見つかりません。このファイルをスキップします。")
+#                 continue
 
-            df_clean['商品名'] = df['商品名']
+#             df_clean['商品名'] = df['商品名']
 
-            # 数量列を処理
-            if '数量' in df.columns:
-                df_clean['数量'] = pd.to_numeric(df['数量'], errors='coerce').fillna(1)
-            else:
-                df_clean['数量'] = 1
+#             # 数量列を処理
+#             if '数量' in df.columns:
+#                 df_clean['数量'] = pd.to_numeric(df['数量'], errors='coerce').fillna(1)
+#             else:
+#                 df_clean['数量'] = 1
 
-            combined_df_list.append(df_clean)
+#             combined_df_list.append(df_clean)
 
-        except Exception as e:
-            print(f"ファイルの処理中にエラーが発生しました: {e}")
-            return jsonify({'error': 'ファイルの読み込みに失敗しました。'}), 500
+#         except Exception as e:
+#             print(f"ファイルの処理中にエラーが発生しました: {e}")
+#             return jsonify({'error': 'ファイルの読み込みに失敗しました。'}), 500
 
-    if not combined_df_list:
-        return jsonify({'error': '処理できるデータがありませんでした。'}), 400
+#     if not combined_df_list:
+#         return jsonify({'error': '処理できるデータがありませんでした。'}), 400
 
-    combined_df = pd.concat(combined_df_list, ignore_index=True)
+#     combined_df = pd.concat(combined_df_list, ignore_index=True)
 
-    # 商品名でグループ化し、数量の合計を集計します
-    aggregated_sales = combined_df.groupby('商品名').agg(
-        合計数量=('数量', 'sum')
-    ).reset_index()
+#     # 商品名でグループ化し、数量の合計を集計します
+#     aggregated_sales = combined_df.groupby('商品名').agg(
+#         合計数量=('数量', 'sum')
+#     ).reset_index()
 
-    # 最終的な結果に含める列を選択
-    final_result = aggregated_sales[['商品名', '合計数量']]
-    result = final_result.to_dict('records')
+#     # 最終的な結果に含める列を選択
+#     final_result = aggregated_sales[['商品名', '合計数量']]
+#     result = final_result.to_dict('records')
 
-    return jsonify({'result': result})
+#     return jsonify({'result': result})
 
-@app.route('/api/totalling', methods=['POST'])
-def parse_amount(amount_str):
-    """
-    文字列から分量（kg）を抽出し、数値に変換する関数。
-    例: '500g' -> 0.5, '1.5kg' -> 1.5
-    """
-    match = re.search(r'(\d+\.?\d*)\s*(kg|g)', str(amount_str), re.IGNORECASE)
-    if match:
-        amount = float(match.group(1))
-        unit = match.group(2).lower()
-        if unit == 'g':
-            return amount / 1000
-        return amount
-    return 0.0
+@app.route('/api/aggregate', methods=['POST'])
+# def parse_amount(amount_str):
+#     """
+#     文字列から分量（kg）を抽出し、数値に変換する関数。
+#     例: '500g' -> 0.5, '1.5kg' -> 1.5
+#     """
+#     match = re.search(r'(\d+\.?\d*)\s*(kg|g)', str(amount_str), re.IGNORECASE)
+#     if match:
+#         amount = float(match.group(1))
+#         unit = match.group(2).lower()
+#         if unit == 'g':
+#             return amount / 1000
+#         return amount
+#     return 0.0
 
 def aggregate_uploaded_files():
     """
@@ -100,7 +100,14 @@ def aggregate_uploaded_files():
 
             if has_amount:
                 # 分量列がある場合
-                df['分量_kg'] = df['分量'].apply(parse_amount)
+                df['分量_kg'] = df['分量'].apply(
+                    lambda amount_str: 
+                        float(re.search(r'(\d+\.?\d*)\s*(kg|g)', str(amount_str), re.IGNORECASE).group(1)) / 1000 
+                        if re.search(r'(\d+\.?\d*)\s*(kg|g)', str(amount_str), re.IGNORECASE) and re.search(r'(\d+\.?\d*)\s*(kg|g)', str(amount_str), re.IGNORECASE).group(2).lower() == 'g'
+                        else float(re.search(r'(\d+\.?\d*)\s*(kg|g)', str(amount_str), re.IGNORECASE).group(1))
+                        if re.search(r'(\d+\.?\d*)\s*(kg|g)', str(amount_str), re.IGNORECASE)
+                        else 0.0
+                )
                 if has_quantity:
                     df['数量'] = pd.to_numeric(df['数量'], errors='coerce').fillna(0)
                 else:
