@@ -163,6 +163,17 @@ function displayResults(data) {
     <div id="result" class="result-section"></div>
     
     <div id="uniqueResult" class="result-section"></div>
+
+    <div id="result" class="result-section">
+        <div id="aggregateResult"></div>
+        <button id="downloadAggregateBtn" style="display:none;" onclick="downloadAggregate()">集計結果をダウンロード</button>
+    </div>
+
+    <div id="uniqueResult" class="result-section">
+        <div id="uniqueResultContent"></div>
+        <button id="downloadUniqueBtn" style="display:none;" onclick="downloadUnique()">商品名リストをダウンロード</button>
+    </div>
+    
 </div>
 
 <script>
@@ -259,6 +270,95 @@ function displayUniqueResults(data) {
         document.getElementById('uniqueResult').innerHTML = '<h2>商品名一覧 (各ファイル別)</h2><p>表示する結果はありませんでした。</p>';
     } else {
         document.getElementById('uniqueResult').innerHTML = resultHtml;
+    }
+}
+
+// 新しいJavaScript関数
+function showDownloadButtons() {
+    document.getElementById('downloadAggregateBtn').style.display = 'block';
+    document.getElementById('downloadUniqueBtn').style.display = 'block';
+}
+
+function downloadAggregate() {
+    const files = document.getElementById('csvFile').files;
+    const formData = new FormData();
+    for (const file of files) {
+        formData.append('csv_files', file);
+    }
+    
+    fetch('/api/download_aggregate', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('ダウンロードに失敗しました。');
+        }
+        return response.blob();
+    })
+    .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = '品種別集計結果.csv';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+    })
+    .catch(error => {
+        console.error('Download Error:', error);
+        alert('ダウンロード中にエラーが発生しました。');
+    });
+}
+
+function downloadUnique() {
+    const files = document.getElementById('csvFile').files;
+    const formData = new FormData();
+    for (const file of files) {
+        formData.append('csv_files', file);
+    }
+    
+    fetch('/api/download_unique', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('ダウンロードに失敗しました。');
+        }
+        return response.blob();
+    })
+    .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = '商品名別カウント結果.csv';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+    })
+    .catch(error => {
+        console.error('Download Error:', error);
+        alert('ダウンロード中にエラーが発生しました。');
+    });
+}
+
+// uploadFiles関数を修正し、ダウンロードボタンを表示するロジックを追加
+async function uploadFiles() {
+    // ... 既存のロジック ...
+
+    try {
+        // ... aggregateとuniqueのfetch処理 ...
+        
+        // 全ての処理が成功したらボタンを表示
+        showDownloadButtons();
+
+    } catch (error) {
+        // ... エラー処理 ...
+    } finally {
+        document.getElementById('loading').style.display = 'none';
     }
 }
 </script>
